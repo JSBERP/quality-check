@@ -4,6 +4,7 @@ SELECT
     opp.opportunity_owner AS "Opportunity Owner:Link/User:140",
     COALESCE(opp.title, opp.customer_name, opp.party_name, '') AS "Company Name:Data:150",
     COALESCE(opp.party_name, opp.customer_name, '') AS "Party Name:Data:150",
+    COALESCE(opp.custom_order_type, '') AS "Order Type:Data:120",
     COALESCE(lead.city, '') AS "City:Data:100",
     COALESCE(lead.state, '') AS "State:Data:100",
     COALESCE(opp.custom_zone, '') AS "Zone:Data:100",
@@ -100,18 +101,16 @@ WHERE
     AND opp.opportunity_owner = %(user)s
     /*city_condition*/
     AND (
-        COALESCE(
-            NULLIF(CAST(NULLIF(TRIM(CAST(opp.custom_monthly_fabric_need_kgs AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(opp.custom_monthly_fabric_requirement_kgs AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(opp.custom_monthly_fabric_requirement_kg AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(lead.custom_monthly_fabric_need_kgs AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(lead.custom_monthly_fabric_requirement_kgs AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(opp.custom_monthly_bag_need_pieces AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(opp.custom_monthly_bag_quantity_pieces AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(opp.custom_monthly_bag_quantity_pcs AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(lead.custom_monthly_bag_need_pieces AS CHAR)), '') AS DECIMAL(18, 6)), 0),
-            NULLIF(CAST(NULLIF(TRIM(CAST(lead.custom_monthly_bag_quantity_pieces AS CHAR)), '') AS DECIMAL(18, 6)), 0)
-        ) IS NOT NULL
+        (opp.custom_monthly_fabric_need_kgs IS NOT NULL AND opp.custom_monthly_fabric_need_kgs != 0) OR
+        (opp.custom_monthly_fabric_requirement_kgs IS NOT NULL AND opp.custom_monthly_fabric_requirement_kgs != 0) OR
+        (opp.custom_monthly_fabric_requirement_kg IS NOT NULL AND opp.custom_monthly_fabric_requirement_kg != 0) OR
+        (lead.custom_monthly_fabric_need_kgs IS NOT NULL AND lead.custom_monthly_fabric_need_kgs != 0) OR
+        (lead.custom_monthly_fabric_requirement_kgs IS NOT NULL AND lead.custom_monthly_fabric_requirement_kgs != 0) OR
+        (opp.custom_monthly_bag_need_pieces IS NOT NULL AND opp.custom_monthly_bag_need_pieces != 0) OR
+        (opp.custom_monthly_bag_quantity_pieces IS NOT NULL AND opp.custom_monthly_bag_quantity_pieces != 0) OR
+        (opp.custom_monthly_bag_quantity_pcs IS NOT NULL AND opp.custom_monthly_bag_quantity_pcs != 0) OR
+        (lead.custom_monthly_bag_need_pieces IS NOT NULL AND lead.custom_monthly_bag_need_pieces != 0) OR
+        (lead.custom_monthly_bag_quantity_pieces IS NOT NULL AND lead.custom_monthly_bag_quantity_pieces != 0)
     )
     AND NOT EXISTS (
         SELECT

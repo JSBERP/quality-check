@@ -8,11 +8,19 @@ user_roles = frappe.db.get_all(
     pluck="role"
 )
 
+# Checks if the user has any of the administrative/managerial roles
 is_manager = (
+    "CRM Manager" in user_roles or
+    "Quotation Approver" in user_roles or
     "Export CRM Manager" in user_roles or
     "Domestic CRM Manager" in user_roles or
-    "Administrator" in user_roles
+    "Administrator" in user_roles or
+    "System Manager" in user_roles
 )
+
+# ── User filter ──────────────────────────────────────────────────────────────
+# If manager, see all records. If normal user (Lead Incharge / Lead Report), restrict to their own data.
+user_filter = "" if is_manager else f"AND opp.opportunity_owner = '{current_user}'"
 
 # ── Columns ─────────────────────────────────────────────────────────────────
 columns = [
@@ -20,6 +28,7 @@ columns = [
     {"label": "Opportunity Owner",  "fieldname": "opportunity_owner", "fieldtype": "Link",   "options": "User",        "width": 120},
     {"label": "Company Name",       "fieldname": "company_name",      "fieldtype": "Data",                             "width": 150},
     {"label": "Party Name",         "fieldname": "party_name",        "width": 150},
+    {"label": "Order Type",         "fieldname": "custom_order_type", "width": 120},
     {"label": "City",               "fieldname": "city",              "width": 100},
     {"label": "Sales Stage",        "fieldname": "custom_sales_group","width": 120},
     {"label": "Opportunity Status", "fieldname": "status",            "width": 120},
@@ -55,9 +64,6 @@ columns = [
     {"label": "Call Recording",     "fieldname": "call_recording",    "width": 120},
 ]
 
-# ── User filter ──────────────────────────────────────────────────────────────
-user_filter = "" if is_manager else f"AND opp.opportunity_owner = '{current_user}'"
-
 # ── Dynamic field expressions ───────────────────────────────────────────────
 def has_field_safe(doctype, fieldname):
     try:
@@ -65,24 +71,18 @@ def has_field_safe(doctype, fieldname):
     except Exception:
         return False
 
-# 1. Existing mapping logic (Fabric, Bags, Requirements, Sales Group)
 fabric_sources = []
 bag_sources = []
 requirement_sources = []
 sales_group_sources = []
 
-# Field checks for Opportunity/Lead
 for dt, prefix in [("Opportunity", "opp"), ("Lead", "lead")]:
-    # Fabric
     for f in ["custom_monthly_fabric_need_kgs", "custom_monthly_fabric_requirement_kgs", "custom_monthly_fabric_requirement_kg"]:
         if has_field_safe(dt, f): fabric_sources.append(f"{prefix}.{f}")
-    # Bags
     for f in ["custom_monthly_bag_need_pieces", "custom_monthly_bag_quantity_pieces", "custom_monthly_bag_quantity_pcs"]:
         if has_field_safe(dt, f): bag_sources.append(f"{prefix}.{f}")
-    # Requirement
     for f in ["requirement", "custom_requirement"]:
         if has_field_safe(dt, f): requirement_sources.append(f"{prefix}.{f}")
-    # Sales Group
     for f in ["custom_sales_group", "sales_group"]:
         if has_field_safe(dt, f): sales_group_sources.append(f"{prefix}.{f}")
 
@@ -91,11 +91,9 @@ bag_expr = ("COALESCE(" + ", ".join(bag_sources) + ")") if bag_sources else "NUL
 requirement_expr = ("COALESCE(" + ", ".join(requirement_sources) + ")") if requirement_sources else "''"
 sales_group_expr = ("COALESCE(" + ", ".join(sales_group_sources) + ")") if sales_group_sources else "''"
 
-# Numeric formatting expressions
 fabric_display_expr = f"(CASE WHEN {fabric_expr} IS NULL THEN '0' ELSE CAST({fabric_expr} AS CHAR) END)"
 bag_display_expr = f"(CASE WHEN {bag_expr} IS NULL THEN '0' ELSE CAST({bag_expr} AS CHAR) END)"
 
-# 2. Mapping logic for the new Custom Detail Fields
 custom_fields_to_map = [
     "custom_gsm", "custom_quality", "custom__width", 
     "custom_fabric_machinery_details", "custom_bag_gsm", "custom_bag_type", 
@@ -110,7 +108,6 @@ for field in custom_fields_to_map:
     if has_field_safe("Lead", field): sources.append(f"lead.{field}")
     custom_exprs[field] = ("COALESCE(" + ", ".join(sources) + ")") if sources else "''"
 
-# 3. Mapping logic for Company and Party (from Opportunity)
 company_name_sources = []
 for f in ["title", "customer_name", "company_name", "party_name"]:
     if has_field_safe("Opportunity", f): company_name_sources.append(f"opp.{f}")
@@ -119,7 +116,6 @@ party_name_sources = []
 for f in ["party_name", "customer_name"]:
     if has_field_safe("Opportunity", f): party_name_sources.append(f"opp.{f}")
 
-# City mapping
 city_sources = []
 for f in ["city", "custom_city"]:
     if has_field_safe("Opportunity", f): city_sources.append(f"opp.{f}")
@@ -141,6 +137,7 @@ data = frappe.db.sql(f"""
         opp.opportunity_owner,
         {company_name_expr} AS company_name,
         {party_name_expr} AS party_name,
+        COALESCE(opp.custom_order_type, '') AS custom_order_type,
         {city_expr} AS city,
         {sales_group_expr} AS custom_sales_group,
         opp.status,
@@ -187,5 +184,26 @@ data = frappe.db.sql(f"""
     ORDER BY
         child.date DESC
 """, filters, as_dict=1)
+
+def is_zero_or_empty(val):
+    if val is None:
+        return True
+    val_str = str(val).strip()
+    if not val_str or val_str == "0":
+        return True
+    try:
+        return float(val_str) == 0.0
+    except ValueError:
+        return False
+
+data = [
+    row for row in data 
+    if not (
+        is_zero_or_empty(row.get("fabric_requirement")) and
+        is_zero_or_empty(row.get("fabric_need")) and
+        is_zero_or_empty(row.get("bag_quantity")) and
+        is_zero_or_empty(row.get("bag_need"))
+    )
+]
 
 data = [columns, data, None, None, None, True]

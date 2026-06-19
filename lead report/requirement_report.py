@@ -42,4 +42,49 @@ def execute(filters=None):
     # Extract columns exactly as defined in the .sql file
     columns = [desc[0] for desc in frappe.db.get_description()]
 
-    return columns, data
+    # Find column indices dynamically to filter rows
+    fabric_req_idx = -1
+    fabric_need_idx = -1
+    bag_qty_idx = -1
+    bag_need_idx = -1
+
+    for i, col in enumerate(columns):
+        col_clean = col.split(":")[0].strip().lower()
+        if col_clean == "fabric requirement":
+            fabric_req_idx = i
+        elif col_clean == "fabric need":
+            fabric_need_idx = i
+        elif col_clean == "bag quantity":
+            bag_qty_idx = i
+        elif col_clean == "bag need":
+            bag_need_idx = i
+
+    def is_zero_or_empty(val):
+        if val is None:
+            return True
+        val_str = str(val).strip()
+        if not val_str or val_str == "0" or val_str == "0.0":
+            return True
+        try:
+            return float(val_str) == 0.0
+        except ValueError:
+            return False
+
+    filtered_data = []
+    for row in data:
+        val_fabric_req = row[fabric_req_idx] if fabric_req_idx != -1 else "0"
+        val_fabric_need = row[fabric_need_idx] if fabric_need_idx != -1 else "0"
+        val_bag_qty = row[bag_qty_idx] if bag_qty_idx != -1 else "0"
+        val_bag_need = row[bag_need_idx] if bag_need_idx != -1 else "0"
+        
+        # Exclude the row entirely if all four fields are zero or empty
+        if (is_zero_or_empty(val_fabric_req) and 
+            is_zero_or_empty(val_fabric_need) and 
+            is_zero_or_empty(val_bag_qty) and 
+            is_zero_or_empty(val_bag_need)):
+            continue
+            
+        filtered_data.append(row)
+
+    return columns, filtered_data
+
