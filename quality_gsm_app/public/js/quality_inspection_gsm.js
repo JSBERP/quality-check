@@ -19,83 +19,107 @@ frappe.ui.form.on(parentDoctype, {
         if (frm.is_new() && frm.fields_dict.date && !frm.doc.date) {
             frm.set_value('date', frappe.datetime.get_today());
         }
+
+        // Apply any pending route_options (set by GSM Production Entry redirect)
+        // before deciding which tables to show, so testing_type is always known.
+        if (frm.is_new() && frappe.route_options) {
+            const opts = frappe.route_options;
+            ['testing_type','batch_no','roll_no','shaft_production_run',
+             'gsm_production_entry','gsm','order_code','quality','unit',
+             'color','shift','date'].forEach(f => {
+                if (opts[f] !== undefined && !frm.doc[f]) {
+                    frm.doc[f] = opts[f];
+                }
+            });
+        }
+
         toggle_testing_type_fields(frm);
         if (frm.is_new()) {
             set_auto_naming_series(frm);
         }
-        
-        // Auto-load GSM sections if redirecting with a Shaft Production Run
-        if (frm.is_new() && frm.doc.testing_type !== 'Tensile Testing' && frm.doc.shaft_production_run) {
-            const sectionsField = get_sections_field(frm);
-            if (sectionsField && (!frm.doc[sectionsField] || frm.doc[sectionsField].length === 0)) {
-                frappe.call({
-                    method: "quality_gsm_app.api.quality.get_unique_gsm_values",
-                    args: { 
-                        shaft_production_run: frm.doc.shaft_production_run,
-                        batch_no: frm.doc.batch_no
-                    },
-                    callback: (r) => {
-                        const values = (r.message || []).map((v) => flt(v)).filter((v) => v > 0);
-                        if (values.length) {
-                            frm.clear_table(sectionsField);
-                            values.forEach((gsm) => {
-                                const row = frm.add_child(sectionsField);
-                                row.representative_gsm = gsm;
-                                row.quality = frm.doc.quality || "";
-                            });
-                            frm.refresh_field(sectionsField);
-                            recalc_all_sections(frm);
-                            render_custom_html_grid(frm);
-                        }
-                    }
-                });
-            }
+
+        // Bug fix: always exit early for tensile — no GSM tables needed.
+        if (is_tensile_testing(frm)) {
+            empty_gsm_grid(frm);
+            return;
         }
 
-        if (frm.doc.testing_type !== 'Tensile Testing') {
+        add_load_gsm_button(frm);
+
+        const sectionsField = get_sections_field(frm);
+        const hasSections = !!(sectionsField && (frm.doc[sectionsField] || []).length);
+
+        if (frm.is_new() && frm.doc.shaft_production_run && !hasSections) {
+            // Only auto-load GSM sections when NOT tensile testing
+            if (!is_tensile_testing(frm) && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
+                load_gsm_sections_for_batch(frm);
+            }
+        } else if (hasSections && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
+            filter_existing_sections_to_batch(frm);
+        } else {
             recalc_all_sections(frm);
             render_custom_html_grid(frm);
         }
     },
     shaft_production_run(frm) {
-        if (frm.doc.shaft_production_run) {
-            frappe.model.with_doc('Shaft Production Run', frm.doc.shaft_production_run, () => {
-                let doc = frappe.model.get_doc('Shaft Production Run', frm.doc.shaft_production_run);
-                if (doc) {
-                    let fields_to_fetch = ['batch_no', 'order_code', 'quality', 'unit', 'color', 'shift', 'roll_no'];
-                    let updates = {};
-                    fields_to_fetch.forEach(f => {
-                        if (doc[f] !== undefined) updates[f] = doc[f];
-                    });
-                    if (doc.run_date !== undefined) updates['date'] = doc.run_date;
-                    if (Object.keys(updates).length > 0) {
-                        frappe.model.set_value(frm.doctype, frm.docname, updates);
-                    }
-                }
-            });
+        if (!frm.doc.shaft_production_run) {
+            return;
         }
+        frappe.model.with_doc('Shaft Production Run', frm.doc.shaft_production_run, () => {
+            const doc = frappe.model.get_doc('Shaft Production Run', frm.doc.shaft_production_run);
+            if (!doc) {
+                return;
+            }
+            const fillIfEmpty = (field, value) => {
+                if (value && !frm.doc[field]) {
+                    frm.set_value(field, value);
+                }
+            };
+            fillIfEmpty('order_code', doc.custom_order_code || doc.order_code);
+            fillIfEmpty('unit', doc.custom_unit || doc.unit);
+            fillIfEmpty('shift', doc.shift);
+            fillIfEmpty('date', doc.run_date);
+            fillIfEmpty('quality', doc.quality);
+            fillIfEmpty('color', doc.custom_color || doc.color);
+            // Do not copy header batch_no / roll_no — those come from the selected roll.
+        });
     },
     gsm_production_entry(frm) {
-        if (frm.doc.gsm_production_entry) {
-            frappe.model.with_doc('GSM Production Entry', frm.doc.gsm_production_entry, () => {
-                let doc = frappe.model.get_doc('GSM Production Entry', frm.doc.gsm_production_entry);
-                if (doc) {
-                    let fields_to_fetch = ['batch_no', 'order_code', 'quality', 'unit', 'color', 'shift', 'roll_no'];
-                    let updates = {};
-                    fields_to_fetch.forEach(f => {
-                        if (doc[f] !== undefined) updates[f] = doc[f];
-                    });
-                    if (doc.run_date !== undefined) updates['date'] = doc.run_date;
-                    if (Object.keys(updates).length > 0) {
-                        frappe.model.set_value(frm.doctype, frm.docname, updates);
-                    }
-                }
-            });
+        if (!frm.doc.gsm_production_entry) {
+            return;
         }
+        frappe.model.with_doc('GSM Production Entry', frm.doc.gsm_production_entry, () => {
+            const doc = frappe.model.get_doc('GSM Production Entry', frm.doc.gsm_production_entry);
+            if (!doc) {
+                return;
+            }
+            const fillIfEmpty = (field, value) => {
+                if (value && !frm.doc[field]) {
+                    frm.set_value(field, value);
+                }
+            };
+            fillIfEmpty('order_code', doc.order_code);
+            fillIfEmpty('quality', doc.quality);
+            fillIfEmpty('unit', doc.unit);
+            fillIfEmpty('color', doc.color);
+            fillIfEmpty('shift', doc.shift);
+            fillIfEmpty('date', doc.run_date);
+            // Keep the selected roll batch — do not overwrite from the session header.
+        });
     },
     testing_type(frm) {
         toggle_testing_type_fields(frm);
         set_auto_naming_series(frm);
+        if (is_tensile_testing(frm)) {
+            empty_gsm_grid(frm);
+        } else if (frm.doc.shaft_production_run && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
+            const sectionsField = get_sections_field(frm);
+            if (sectionsField && !(frm.doc[sectionsField] || []).length) {
+                load_gsm_sections_for_batch(frm);
+            } else {
+                render_custom_html_grid(frm);
+            }
+        }
     },
     unit(frm) {
         if (frm.is_new()) {
@@ -118,9 +142,11 @@ frappe.ui.form.on(parentDoctype, {
                 frappe.model.set_value(row.doctype, row.name, "quality", frm.doc.quality || "");
             }
         });
-        if (frm.doc.testing_type !== 'Tensile Testing') {
+        if (!is_tensile_testing(frm)) {
             recalc_all_sections(frm);
             render_custom_html_grid(frm);
+        } else {
+            empty_gsm_grid(frm);
         }
     }
 });
@@ -163,11 +189,142 @@ function recalc_tensile_total_samples(frm) {
     safe_set_value(frm, 'tensile_total_samples', count);
 }
 
+function is_tensile_testing(frm) {
+    return String(frm.doc.testing_type || "").toLowerCase().includes("tensile");
+}
+
+function empty_gsm_grid(frm) {
+    ["custom_html_grid", "custom_gsm_grid_html"].forEach((fn) => {
+        if (frm.fields_dict[fn] && frm.fields_dict[fn].$wrapper) {
+            frm.fields_dict[fn].$wrapper.empty();
+        }
+        if (frm.fields_dict[fn]) {
+            frm.set_df_property(fn, "hidden", 1);
+        }
+    });
+}
+
+function gsm_query_args(frm) {
+    return {
+        shaft_production_run: frm.doc.shaft_production_run,
+        batch_no: frm.doc.batch_no || "",
+        roll_no: frm.doc.roll_no || 0,
+        // Pass the explicit GSM (set by GSM Production Entry redirect) so the
+        // backend fast-path returns exactly 1 value without scanning all shaft rows.
+        gsm: frm.doc.gsm || ""
+    };
+}
+
+function parse_gsm_values(message) {
+    const values = (message || []).map((v) => flt(v)).filter((v) => v > 0);
+    return values.length > 1 ? [values[0]] : values;
+}
+
+function section_has_samples(row) {
+    for (let i = 1; i <= 25; i++) {
+        if (flt(row[`r1_s${i}`]) || flt(row[`r2_s${i}`])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function apply_gsm_sections(frm, values) {
+    const sectionsField = get_sections_field(frm);
+    if (!sectionsField || !values.length) {
+        return;
+    }
+    frm._qc_target_gsm = values[0];
+    frm.clear_table(sectionsField);
+    const row = frm.add_child(sectionsField);
+    row.representative_gsm = values[0];
+    row.quality = frm.doc.quality || "";
+    frm.refresh_field(sectionsField);
+    recalc_all_sections(frm);
+    render_custom_html_grid(frm);
+}
+
+function load_gsm_sections_for_batch(frm) {
+    if (is_tensile_testing(frm) || frm.__qc_sections_loading) {
+        return;
+    }
+    if (!frm.doc.shaft_production_run || (!frm.doc.batch_no && !cint(frm.doc.roll_no))) {
+        return;
+    }
+    const sectionsField = get_sections_field(frm);
+    if (!sectionsField) {
+        return;
+    }
+    frm.__qc_sections_loading = true;
+    frappe.call({
+        method: "quality_gsm_app.api.quality.get_unique_gsm_values",
+        args: gsm_query_args(frm),
+        callback: (r) => {
+            frm.__qc_sections_loading = false;
+            const values = parse_gsm_values(r.message);
+            if (values.length) {
+                apply_gsm_sections(frm, values);
+            }
+        },
+        error: () => {
+            frm.__qc_sections_loading = false;
+        }
+    });
+}
+
+function filter_existing_sections_to_batch(frm) {
+    if (is_tensile_testing(frm) || frm.__qc_sections_filtering) {
+        return;
+    }
+    if (!frm.doc.shaft_production_run || (!frm.doc.batch_no && !cint(frm.doc.roll_no))) {
+        recalc_all_sections(frm);
+        render_custom_html_grid(frm);
+        return;
+    }
+    const filterKey = `${frm.doc.batch_no || ""}|${frm.doc.roll_no || 0}`;
+    if (frm.__qc_filtered_for === filterKey && frm._qc_target_gsm) {
+        recalc_all_sections(frm);
+        render_custom_html_grid(frm);
+        return;
+    }
+    frm.__qc_sections_filtering = true;
+    frappe.call({
+        method: "quality_gsm_app.api.quality.get_unique_gsm_values",
+        args: gsm_query_args(frm),
+        callback: (r) => {
+            frm.__qc_sections_filtering = false;
+            const values = parse_gsm_values(r.message);
+            if (values.length) {
+                frm._qc_target_gsm = values[0];
+                frm.__qc_filtered_for = `${frm.doc.batch_no || ""}|${frm.doc.roll_no || 0}`;
+                const sectionsField = get_sections_field(frm);
+                const rows = frm.doc[sectionsField] || [];
+                const target = values[0];
+                const remaining = rows.filter((row) => {
+                    const match = Math.abs(flt(row.representative_gsm) - target) < 0.51;
+                    return match || section_has_samples(row);
+                });
+                if (remaining.length && remaining.length !== rows.length) {
+                    frm.doc[sectionsField] = remaining;
+                    frm.refresh_field(sectionsField);
+                }
+            }
+            recalc_all_sections(frm);
+            render_custom_html_grid(frm);
+        },
+        error: () => {
+            frm.__qc_sections_filtering = false;
+            recalc_all_sections(frm);
+            render_custom_html_grid(frm);
+        }
+    });
+}
+
 function toggle_testing_type_fields(frm) {
     if (!frm.doc.testing_type) return;
 
-    const is_tensile = frm.doc.testing_type === 'Tensile Testing';
-    const is_patty = frm.doc.testing_type === 'Patty Cutting GSM Test';
+    const is_tensile = is_tensile_testing(frm);
+    const is_patty = String(frm.doc.testing_type || "").toLowerCase().includes("patty");
 
     frm.toggle_display('test_method', is_tensile);
     frm.toggle_display('cutting_template_width', is_tensile || is_patty);
@@ -177,10 +334,16 @@ function toggle_testing_type_fields(frm) {
 
     frm.toggle_display('sections', !is_tensile);
     frm.toggle_display('custom_gsm_grid_html', !is_tensile);
+    frm.toggle_display('custom_html_grid', !is_tensile);
+    frm.set_df_property('custom_gsm_grid_html', 'hidden', is_tensile ? 1 : 0);
+    frm.set_df_property('custom_html_grid', 'hidden', is_tensile ? 1 : 0);
     frm.toggle_display('gsm_total_samples', !is_tensile);
     frm.toggle_display('gsm_pass_samples', !is_tensile);
     frm.toggle_display('gsm_fail_samples', !is_tensile);
     frm.toggle_display('gsm_overall_result', !is_tensile);
+    frm.toggle_display('gsm_total_sections', !is_tensile);
+    frm.toggle_display('gsm_pass_sections', !is_tensile);
+    frm.toggle_display('gsm_fail_sections', !is_tensile);
 
     // Set read_only states
     const keep_editable = [
@@ -216,9 +379,12 @@ function toggle_testing_type_fields(frm) {
         frm.set_df_property('cutting_template_height', 'read_only', 0);
         frm.set_df_property('tensile_sections', 'read_only', 0);
         recalc_tensile_total_samples(frm);
+        empty_gsm_grid(frm);
     } else {
         frm.set_df_property('sections', 'read_only', 0);
         frm.set_df_property('custom_gsm_grid_html', 'read_only', 0);
+        frm.set_df_property('custom_html_grid', 'hidden', 0);
+        frm.set_df_property('custom_gsm_grid_html', 'hidden', 0);
         render_custom_html_grid(frm);
     }
 }
@@ -284,31 +450,30 @@ function add_load_gsm_button(frm) {
     const sectionsField = get_sections_field(frm);
     if (!frm.doc.shaft_production_run || !sectionsField) return;
 
+    if (frm.custom_buttons && frm.custom_buttons[__("Load Quality Sections")]) {
+        return;
+    }
+
     frm.add_custom_button(__("Load Quality Sections"), () => {
+        if (is_tensile_testing(frm)) {
+            frappe.msgprint(__("GSM sample tables are not used for Tensile Testing."));
+            return;
+        }
+        if (!frm.doc.batch_no && !cint(frm.doc.roll_no)) {
+            frappe.msgprint(__("Select Batch No first. The GSM table is loaded for that roll only."));
+            return;
+        }
         frappe.call({
             method: "quality_gsm_app.api.quality.get_unique_gsm_values",
-            args: {
-                shaft_production_run: frm.doc.shaft_production_run,
-                batch_no: frm.doc.batch_no
-            },
+            args: gsm_query_args(frm),
             callback: (r) => {
-                const values = (r.message || []).map((v) => flt(v)).filter((v) => v > 0);
+                const values = parse_gsm_values(r.message);
                 if (!values.length) {
-                    frappe.msgprint(__("No GSM values found in roll_production_results."));
+                    frappe.msgprint(__("No GSM values found for this batch / roll."));
                     return;
                 }
-
-                frm.clear_table(sectionsField);
-                values.forEach((gsm) => {
-                    const row = frm.add_child(sectionsField);
-                    row.representative_gsm = gsm;
-                    row.quality = frm.doc.quality || "";
-                });
-
-                frm.refresh_field(sectionsField);
-                recalc_all_sections(frm);
-                render_custom_html_grid(frm);
-                frappe.show_alert({ message: __("Quality sections loaded"), indicator: "green" });
+                apply_gsm_sections(frm, values);
+                frappe.show_alert({ message: __("Quality section loaded for this roll"), indicator: "green" });
             }
         });
     });
@@ -412,10 +577,25 @@ function render_custom_html_grid(frm) {
     const wrapper = frm.fields_dict.custom_html_grid.$wrapper;
     wrapper.empty();
 
+    if (frm.doc.testing_type === "Tensile Testing") {
+        return;
+    }
+
     const sectionsField = get_sections_field(frm);
-    const rows = frm.doc[sectionsField] || [];
+    let rows = frm.doc[sectionsField] || [];
+    const targetGsm = flt(frm._qc_target_gsm);
+    if (targetGsm > 0 && rows.length) {
+        const matched = rows.filter((row) => Math.abs(flt(row.representative_gsm) - targetGsm) < 0.51);
+        if (matched.length) {
+            rows = matched;
+        } else if (frm.doc.batch_no || frm.doc.roll_no) {
+            rows = [rows[0]];
+        }
+    } else if ((frm.doc.batch_no || frm.doc.roll_no) && rows.length > 1) {
+        rows = [rows[0]];
+    }
     if (!rows.length) {
-        wrapper.html(`<div class="text-muted" style="padding: 15px;">No GSM Sections loaded. Click 'Load Quality Sections' from Shaft Production Run.</div>`);
+        wrapper.html(`<div class="text-muted" style="padding: 15px;">No GSM section for this batch. Select Batch No, then Load Quality Sections if needed.</div>`);
         return;
     }
 
