@@ -64,6 +64,15 @@ def _row_skipped(row) -> bool:
 	return bool(wasted or bundle)
 
 
+def _one_gsm(values):
+	uniq = []
+	for v in values or []:
+		gsm = flt(v)
+		if gsm > 0 and gsm not in uniq:
+			uniq.append(gsm)
+	return uniq[:1]
+
+
 def _collect_gsm_from_rows(rows, target_batch: str, target_roll: int):
 	exact = []
 	related = []
@@ -83,9 +92,13 @@ def _collect_gsm_from_rows(rows, target_batch: str, target_roll: int):
 			elif _batch_matches(row_batch, target_batch):
 				related.append(gsm)
 		elif target_roll and row_roll == target_roll:
+			# Roll numbers restart per job (50 GSM roll 1 and 60 GSM roll 1).
+			# Without a batch, do not collect every job's matching roll.
 			exact.append(gsm)
-	if target_batch or target_roll:
+	if target_batch:
 		return [v for v in (exact or related) if v > 0]
+	if target_roll:
+		return _one_gsm(exact)
 	return [v for v in all_values if v > 0]
 
 
@@ -105,9 +118,14 @@ def get_unique_gsm_values(shaft_production_run: str, batch_no: str = None, roll_
 	target_roll = cint(roll_no)
 
 	# Production rolls only — do not pull every job GSM on the shaft.
-	item_values = _collect_gsm_from_rows(getattr(doc, "items", None) or [], target_batch, target_roll)
+	items = getattr(doc, "items", None) or []
+	item_values = _collect_gsm_from_rows(items, target_batch, target_roll)
 	if item_values:
-		return sorted(set(item_values))
+		return _one_gsm(item_values)
+
+	# Rolls exist but none matched this batch — do not fall back to shaft_jobs (50 + 60).
+	if items:
+		return []
 
 	if not (target_batch or target_roll):
 		return []
@@ -117,7 +135,7 @@ def get_unique_gsm_values(shaft_production_run: str, batch_no: str = None, roll_
 		if df.fieldname == "items":
 			continue
 		matched.extend(_collect_gsm_from_rows(getattr(doc, df.fieldname, None) or [], target_batch, target_roll))
-	return sorted(set(matched))
+	return _one_gsm(matched)
 
 
 @frappe.whitelist()
@@ -211,7 +229,10 @@ def create_quality_checking_from_shaft(
 	if not cint(getattr(qc, "roll_no", 0) or 0) and qc.batch_no and "/" in str(qc.batch_no):
 		qc.roll_no = cint(str(qc.batch_no).split("/")[-1])
 
-	if testing_type in ("Round Cutting GSM Test", "Patty Cutting GSM Test"):
+	if gsm_values and qc.meta.has_field("gsm"):
+		qc.gsm = gsm_values[0]
+
+	if testing_type in ("Round Cutting GSM Test", "Patty Cutting GSM Test", "GSM Testing"):
 		for gsm in gsm_values[:1]:
 			child = qc.append("sections", {})
 			child.representative_gsm = gsm

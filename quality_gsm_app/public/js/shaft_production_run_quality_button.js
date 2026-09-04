@@ -30,9 +30,21 @@ frappe.ui.form.on("Shaft Production Run", {
                     args: { shaft_production_run: frm.doc.name },
                     callback: (r) => {
                         const batches = r.message || [];
-                        let prompt_field = { fieldtype: "Data", fieldname: "batch_no", label: __("Enter Batch No (Optional)") };
+                        let prompt_field = {
+                            fieldtype: "Data",
+                            fieldname: "batch_no",
+                            label: __("Enter Batch No"),
+                            reqd: 1,
+                        };
                         if (batches.length) {
-                            prompt_field = { fieldtype: "Select", fieldname: "batch_no", label: __("Select Batch No"), options: batches, reqd: 1 };
+                            prompt_field = {
+                                fieldtype: "Select",
+                                fieldname: "batch_no",
+                                label: __("Select Batch No"),
+                                options: batches,
+                                reqd: 1,
+                                default: batches.length === 1 ? batches[0] : "",
+                            };
                         }
                         
                         frappe.prompt(
@@ -55,9 +67,21 @@ frappe.ui.form.on("Shaft Production Run", {
                     args: { shaft_production_run: frm.doc.name },
                     callback: (r) => {
                         const batches = r.message || [];
-                        let prompt_field = { fieldtype: "Data", fieldname: "batch_no", label: __("Enter Batch No (Optional)") };
+                        let prompt_field = {
+                            fieldtype: "Data",
+                            fieldname: "batch_no",
+                            label: __("Enter Batch No"),
+                            reqd: 1,
+                        };
                         if (batches.length) {
-                            prompt_field = { fieldtype: "Select", fieldname: "batch_no", label: __("Select Batch No"), options: batches, reqd: 1 };
+                            prompt_field = {
+                                fieldtype: "Select",
+                                fieldname: "batch_no",
+                                label: __("Select Batch No"),
+                                options: batches,
+                                reqd: 1,
+                                default: batches.length === 1 ? batches[0] : "",
+                            };
                         }
                         
                         frappe.prompt(
@@ -80,9 +104,21 @@ frappe.ui.form.on("Shaft Production Run", {
                     args: { shaft_production_run: frm.doc.name },
                     callback: (r) => {
                         const batches = r.message || [];
-                        let prompt_field = { fieldtype: "Data", fieldname: "batch_no", label: __("Enter Batch No (Optional)") };
+                        let prompt_field = {
+                            fieldtype: "Data",
+                            fieldname: "batch_no",
+                            label: __("Enter Batch No"),
+                            reqd: 1,
+                        };
                         if (batches.length) {
-                            prompt_field = { fieldtype: "Select", fieldname: "batch_no", label: __("Select Batch No"), options: batches, reqd: 1 };
+                            prompt_field = {
+                                fieldtype: "Select",
+                                fieldname: "batch_no",
+                                label: __("Select Batch No"),
+                                options: batches,
+                                reqd: 1,
+                                default: batches.length === 1 ? batches[0] : "",
+                            };
                         }
                         
                         frappe.prompt(
@@ -99,13 +135,17 @@ frappe.ui.form.on("Shaft Production Run", {
     }
 });
 
-function create_quality_checking(shaft_name, batch_no, testing_type="GSM Testing") {
+function create_quality_checking(shaft_name, batch_no, testing_type="Round Cutting GSM Test") {
+    const roll_no = (String(batch_no || "").includes("/"))
+        ? cint(String(batch_no).split("/").pop())
+        : 0;
     frappe.call({
         method: "quality_gsm_app.api.quality.create_quality_checking_from_shaft",
         args: { 
             shaft_production_run: shaft_name,
             batch_no: batch_no,
-            testing_type: testing_type
+            testing_type: testing_type,
+            roll_no: roll_no
         },
         freeze: true,
         callback: (r) => {
