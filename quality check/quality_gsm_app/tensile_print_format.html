@@ -1,0 +1,248 @@
+<meta name="pdfkit-orientation" content="Portrait" />
+<meta name="pdfkit-page-size" content="A4" />
+<style>
+  .report {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    color: #000;
+    padding: 8px;
+  }
+
+  .company-header {
+    margin-bottom: 32px;
+  }
+
+  .company-header table {
+    width: 100%;
+    border: none;
+    border-collapse: collapse;
+  }
+
+  .company-header td {
+    border: none;
+    vertical-align: middle;
+    padding: 0;
+  }
+
+  .company-logo {
+    width: 80px;
+    height: auto;
+    display: block;
+  }
+
+  .doc-title {
+    text-align: center;
+    font-size: 30px;
+    font-weight: bold;
+    margin: 0 0 18px;
+    text-transform: uppercase;
+  }
+
+  .meta-layout {
+    width: 100%;
+    border: none;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+
+  .meta-layout > tbody > tr > td {
+    border: none;
+    vertical-align: top;
+    width: 50%;
+    padding: 0 6px 0 0;
+  }
+
+  .meta-layout > tbody > tr > td:last-child {
+    padding: 0 0 0 6px;
+  }
+
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+  }
+
+  .meta-table td {
+    border: 1px solid #000;
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+
+  .meta-table td:not(.label-cell) {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .label-cell {
+    background: #d9ead3;
+    font-weight: bold;
+    width: 42%;
+    text-transform: uppercase;
+    font-size: 13px;
+  }
+
+  .results-section {
+    margin-top: 20px;
+  }
+
+  .results-heading {
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+  }
+
+  .data-table th,
+  .data-table td {
+    border: 1px solid #000;
+    padding: 8px 6px;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .data-table th {
+    background: #d9ead3;
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 11px;
+  }
+
+  .prop-cell {
+    text-align: left !important;
+    font-weight: bold;
+    padding-left: 10px !important;
+    font-size: 13px !important;
+  }
+</style>
+
+<div class="report">
+  <div class="company-header">
+    <table>
+      <tr>
+        <td style="width: 100px;">
+          <img class="company-logo" src="{{ frappe.utils.get_url() }}/files/Untitled-2.jpg" alt="Company Logo" />
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="doc-title">Tensile Testing Report</div>
+
+  <table class="meta-layout">
+    <tr>
+      <td>
+        <table class="meta-table">
+          <tr>
+            <td class="label-cell">Report Number</td>
+            <td>{{ doc.name or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Date</td>
+            <td>{{ frappe.utils.formatdate(doc.creation, "dd-MM-yyyy") if doc.creation else "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">SPR Id</td>
+            <td>{{ doc.shaft_production_run or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Shift</td>
+            <td>{{ doc.shift or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Batch No</td>
+            <td>{{ doc.batch_no or "-" }}</td>
+          </tr>
+        </table>
+        <table class="meta-table">
+          <tr>
+            <td class="label-cell">Test Method</td>
+            <td>{{ doc.test_method or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Cutting Template Width</td>
+            <td>{{ doc.cutting_template_width or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Cutting Template Height</td>
+            <td>{{ doc.cutting_template_height or "-" }}</td>
+          </tr>
+        </table>
+      </td>
+      <td>
+        <table class="meta-table">
+          <tr>
+            <td class="label-cell">Unit</td>
+            <td>{{ doc.unit or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Order Code</td>
+            <td>{{ doc.order_code or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Roll No</td>
+            <td>{{ doc.roll_no or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Quality</td>
+            <td>{{ doc.quality or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Colour</td>
+            <td>{{ doc.color or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Fabric Type</td>
+            <td>{{ doc.fabric_type or "-" }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="results-section">
+    <div class="results-heading">Test Results</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 140px;">Properties</th>
+          <th style="width: 60px;">Units</th>
+          <th>Sample A</th>
+          <th>Sample B</th>
+          <th>Sample C</th>
+          <th>Sample D</th>
+          <th>Sample E</th>
+          <th style="width: 80px;">Average</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if doc.tensile_sections %}
+          {% for row in doc.tensile_sections %}
+          <tr>
+            <td class="prop-cell">{{ row.properties or "-" }}</td>
+            <td>{{ row.uom or "-" }}</td>
+            <td>{{ row.sample_1 if row.sample_1 is not none else "-" }}</td>
+            <td>{{ row.sample_2 if row.sample_2 is not none else "-" }}</td>
+            <td>{{ row.sample_3 if row.sample_3 is not none else "-" }}</td>
+            <td>{{ row.sample_4 if row.sample_4 is not none else "-" }}</td>
+            <td>{{ row.sample_5 if row.sample_5 is not none else "-" }}</td>
+            <td>{% if row.average is not none %}{{ "{:.2f}".format(row.average) }}{% else %}-{% endif %}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="8">No samples recorded.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>

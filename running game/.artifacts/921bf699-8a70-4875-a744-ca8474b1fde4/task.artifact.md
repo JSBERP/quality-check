@@ -1,0 +1,6 @@
+- [ ] Define data models in `GameModels.kt`
+- [ ] Implement game loop and logic in `GameViewModel.kt`
+- [ ] Create rendering logic and UI in `GameScreen.kt`
+- [ ] Integrate `GameScreen` into `MainActivity.kt`
+- [ ] Remove legacy "Baking" files
+- [ ] Verify build and functionality

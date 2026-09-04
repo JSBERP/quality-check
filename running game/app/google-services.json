@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "135120748426",
+    "project_id": "com-example-runninggame-d7346",
+    "storage_bucket": "com-example-runninggame-d7346.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:135120748426:android:755fc4f34de5cd75af5273",
+        "android_client_info": {
+          "package_name": "com.example.runninggame"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAc3uZFVcPOfBFoLdRR0Tts0m7RO_ohO5M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

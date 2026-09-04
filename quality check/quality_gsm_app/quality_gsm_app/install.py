@@ -15,6 +15,11 @@ def _run_quality_checking_setup():
     ensure_quality_checking_permissions.execute()
     update_gsm_report_layout_excel_style.execute()
     enforce_field_permanence.execute()
+    from quality_gsm_app.patches.v2_20_filter_qc_sections_by_roll import execute as sync_qc_scripts
+    from quality_gsm_app.patches.v2_21_show_only_selected_gsm_and_test import execute as show_selected_gsm
+
+    sync_qc_scripts()
+    show_selected_gsm()
     frappe.db.commit()
 
 
