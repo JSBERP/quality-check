@@ -1,0 +1,230 @@
+<meta name="pdfkit-orientation" content="Portrait" />
+<meta name="pdfkit-page-size" content="A4" />
+<style>
+  .report {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11px;
+    color: #000;
+    padding: 8px;
+  }
+
+  .company-header {
+    margin-bottom: 32px;
+  }
+
+  .company-header table {
+    width: 100%;
+    border: none;
+    border-collapse: collapse;
+  }
+
+  .company-header td {
+    border: none;
+    vertical-align: middle;
+    padding: 0;
+  }
+
+  .company-logo {
+    width: 80px;
+    height: auto;
+    display: block;
+  }
+
+  .company-name {
+    font-size: 22px;
+    font-weight: bold;
+    color: #38761d;
+    letter-spacing: 0.5px;
+  }
+
+  .company-tagline {
+    font-size: 11px;
+    color: #7f6000;
+    margin-top: 2px;
+  }
+
+  .doc-title {
+    text-align: center;
+    font-size: 30px;
+    font-weight: bold;
+    margin: 0 0 18px;
+    text-transform: uppercase;
+  }
+
+  .meta-layout {
+    width: 100%;
+    border: none;
+    border-collapse: collapse;
+    margin-bottom: 10px;
+  }
+
+  .meta-layout > tbody > tr > td {
+    border: none;
+    vertical-align: top;
+    width: 50%;
+    padding: 0 6px 0 0;
+  }
+
+  .meta-layout > tbody > tr > td:last-child {
+    padding: 0 0 0 6px;
+  }
+
+  .meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+  }
+
+  .meta-table td {
+    border: 1px solid #000;
+    padding: 8px 10px;
+    vertical-align: middle;
+  }
+
+  .meta-table td:not(.label-cell) {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .label-cell {
+    background: #d9ead3;
+    font-weight: bold;
+    width: 42%;
+    text-transform: uppercase;
+    font-size: 13px;
+  }
+
+  .summary-section {
+    margin-top: 20px;
+  }
+
+  .summary-heading {
+    text-align: center;
+    font-size: 13px;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .summary-table {
+    width: 100%;
+    max-width: 420px;
+    margin: 0 auto;
+    border-collapse: collapse;
+  }
+
+  .summary-table td {
+    border: 1px solid #000;
+    padding: 12px 16px;
+    font-size: 13px;
+  }
+
+  .summary-table .label-cell {
+    width: 55%;
+    font-size: 12px;
+  }
+
+  .summary-value {
+    text-align: center;
+    font-size: 28px;
+    font-weight: bold;
+    width: 45%;
+  }
+
+  .result-pass {
+    color: #38761d;
+  }
+
+  .result-fail {
+    color: #cc0000;
+  }
+</style>
+
+<div class="report">
+  <div class="company-header">
+    <table>
+      <tr>
+        <td style="width: 100px;">
+          <img class="company-logo" src="{{ frappe.utils.get_url() }}/files/Untitled-2.jpg" alt="Company Logo" />
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <div class="doc-title">GSM Testing Report</div>
+
+  <table class="meta-layout">
+    <tr>
+      <td>
+        <table class="meta-table">
+          <tr>
+            <td class="label-cell">Report Number</td>
+            <td>{{ doc.name or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Date</td>
+            <td>{{ frappe.utils.formatdate(doc.creation, "dd-MM-yyyy") if doc.creation else "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">SPR Id</td>
+            <td>{{ doc.shaft_production_run or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Shift</td>
+            <td>{{ doc.shift or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Batch No</td>
+            <td>{{ doc.batch_no or "-" }}</td>
+          </tr>
+        </table>
+      </td>
+      <td>
+        <table class="meta-table">
+          <tr>
+            <td class="label-cell">Unit</td>
+            <td>{{ doc.unit or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Order Code</td>
+            <td>{{ doc.order_code or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Roll No</td>
+            <td>{{ doc.roll_no or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Quality</td>
+            <td>{{ doc.quality or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Colour</td>
+            <td>{{ doc.color or "-" }}</td>
+          </tr>
+          <tr>
+            <td class="label-cell">Fabric Type</td>
+            <td>{{ doc.fabric_type or "-" }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <div class="summary-section">
+    <div class="summary-heading">Testing Summary</div>
+    <table class="summary-table">
+      <tr>
+        <td class="label-cell">Total Samples</td>
+        <td class="summary-value">{{ doc.gsm_total_samples or 0 }}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Pass Samples</td>
+        <td class="summary-value result-pass">{{ doc.gsm_pass_samples or 0 }}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">Fail Samples</td>
+        <td class="summary-value result-fail">{{ doc.gsm_fail_samples or 0 }}</td>
+      </tr>
+    </table>
+  </div>
+</div>
