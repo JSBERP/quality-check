@@ -167,6 +167,8 @@
 
   {% if doc.testing_type == 'Tensile Testing' %}
   <div class="doc-title">Tensile Testing Report</div>
+  {% elif doc.testing_type == 'Colour Spectrum' %}
+  <div class="doc-title">Colour Spectrum Testing Report</div>
   {% elif doc.testing_type == 'Patty Cutting GSM Test' %}
   <div class="doc-title">Patty Cutting GSM Testing Report</div>
   {% else %}
@@ -283,6 +285,77 @@
         </tr>
         {% endif %}
       </tbody>
+    </table>
+  </div>
+  {% elif doc.testing_type == 'Colour Spectrum' %}
+  <div class="results-section">
+    <div class="results-heading">Colour Spectrum Test</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th style="width: 90px;">Parameter</th>
+          <th>S1</th>
+          <th>S2</th>
+          <th>S3</th>
+          <th>S4</th>
+          <th>S5</th>
+          <th>S6</th>
+          <th>S7</th>
+          <th>S8</th>
+          <th>S9</th>
+          <th>S10</th>
+          <th style="width: 70px;">Pass</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if doc.colour_spectrum_sections %}
+        {% for row in doc.colour_spectrum_sections %}
+        <tr>
+          <td class="prop-cell">{{ row.parameter or "-" }}</td>
+          <td>{{ row.sample_1 or "-" }}</td>
+          <td>{{ row.sample_2 or "-" }}</td>
+          <td>{{ row.sample_3 or "-" }}</td>
+          <td>{{ row.sample_4 or "-" }}</td>
+          <td>{{ row.sample_5 or "-" }}</td>
+          <td>{{ row.sample_6 or "-" }}</td>
+          <td>{{ row.sample_7 or "-" }}</td>
+          <td>{{ row.sample_8 or "-" }}</td>
+          <td>{{ row.sample_9 or "-" }}</td>
+          <td>{{ row.sample_10 or "-" }}</td>
+          <td class="result-pass">{{ row.pass_count or 0 }}</td>
+        </tr>
+        {% endfor %}
+        {% else %}
+        <tr>
+          <td colspan="12">No colour spectrum samples recorded.</td>
+        </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+  <div class="summary-section">
+    <div class="summary-heading">Pass Summary</div>
+    <table class="summary-table">
+      <tr>
+        <td class="label-cell">D-65 Pass</td>
+        <td class="summary-value result-pass">{{ doc.cs_pass_d65 or 0 }}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">TL-84 Pass</td>
+        <td class="summary-value result-pass">{{ doc.cs_pass_tl84 or 0 }}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">UV Pass</td>
+        <td class="summary-value result-pass">{{ doc.cs_pass_uv or 0 }}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">FL / TFL Pass</td>
+        <td class="summary-value result-pass">{{ doc.cs_pass_fl_tfl or 0 }}</td>
+      </tr>
+      <tr>
+        <td class="label-cell">CWF Pass</td>
+        <td class="summary-value result-pass">{{ doc.cs_pass_cwf or 0 }}</td>
+      </tr>
     </table>
   </div>
   {% else %}

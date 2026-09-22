@@ -38,14 +38,19 @@ frappe.ui.form.on(parentDoctype, {
             set_auto_naming_series(frm);
         }
 
-        // Tensile: never build GSM sample tables.
-        if (is_tensile_testing(frm)) {
+        // Tensile / Colour Spectrum: never build GSM sample tables.
+        if (is_tensile_testing(frm) || is_colour_spectrum(frm)) {
             empty_gsm_grid(frm);
+            if (is_colour_spectrum(frm)) {
+                ensure_colour_spectrum_rows(frm);
+                recalc_colour_spectrum_summary(frm);
+            }
             return;
         }
 
-        // GSM tests: never leave the tensile grid visible.
+        // GSM tests: never leave the tensile / colour spectrum grids visible.
         hide_tensile_grid(frm);
+        hide_colour_spectrum_grid(frm);
 
         add_load_gsm_button(frm);
 
@@ -53,8 +58,8 @@ frappe.ui.form.on(parentDoctype, {
         const hasSections = !!(sectionsField && (frm.doc[sectionsField] || []).length);
 
         if (frm.is_new() && frm.doc.shaft_production_run && !hasSections) {
-            // Only auto-load GSM sections when NOT tensile testing
-            if (!is_tensile_testing(frm) && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
+            // Only auto-load GSM sections when NOT tensile / colour spectrum
+            if (!is_tensile_testing(frm) && !is_colour_spectrum(frm) && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
                 load_gsm_sections_for_batch(frm);
             }
         } else if (hasSections && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
@@ -113,8 +118,12 @@ frappe.ui.form.on(parentDoctype, {
     testing_type(frm) {
         toggle_testing_type_fields(frm);
         set_auto_naming_series(frm);
-        if (is_tensile_testing(frm)) {
+        if (is_tensile_testing(frm) || is_colour_spectrum(frm)) {
             empty_gsm_grid(frm);
+            if (is_colour_spectrum(frm)) {
+                ensure_colour_spectrum_rows(frm);
+                recalc_colour_spectrum_summary(frm);
+            }
         } else if (frm.doc.shaft_production_run && (frm.doc.batch_no || cint(frm.doc.roll_no))) {
             const sectionsField = get_sections_field(frm);
             if (sectionsField && !(frm.doc[sectionsField] || []).length) {
@@ -136,7 +145,17 @@ frappe.ui.form.on(parentDoctype, {
             frappe.msgprint(__("Quality Testing is only applicable for Unit 1, Unit 2, Unit 3, and Unit 4."));
             frappe.validated = false;
         }
-        recalc_all_sections(frm);
+        if (is_colour_spectrum(frm)) {
+            recalc_colour_spectrum_summary(frm);
+        } else {
+            recalc_all_sections(frm);
+        }
+    },
+    colour_spectrum_sections_remove(frm) {
+        recalc_colour_spectrum_summary(frm);
+    },
+    colour_spectrum_sections_add(frm) {
+        recalc_colour_spectrum_summary(frm);
     },
     quality(frm) {
         const sectionsField = get_sections_field(frm);
@@ -145,7 +164,7 @@ frappe.ui.form.on(parentDoctype, {
                 frappe.model.set_value(row.doctype, row.name, "quality", frm.doc.quality || "");
             }
         });
-        if (!is_tensile_testing(frm)) {
+        if (!is_tensile_testing(frm) && !is_colour_spectrum(frm)) {
             recalc_all_sections(frm);
             render_custom_html_grid(frm);
         } else {
@@ -165,6 +184,124 @@ frappe.ui.form.on("Tensile Testing Result", {
         recalc_tensile_total_samples(frm);
     }
 });
+
+const COLOUR_SPECTRUM_SAMPLE_FIELDS = [
+    "sample_1", "sample_2", "sample_3", "sample_4", "sample_5",
+    "sample_6", "sample_7", "sample_8", "sample_9", "sample_10"
+];
+
+const COLOUR_SPECTRUM_PARAMS = ["D-65", "TL-84", "UV", "FL / TFL", "CWF"];
+
+const COLOUR_SPECTRUM_PASS_FIELD_MAP = {
+    "D-65": "cs_pass_d65",
+    "TL-84": "cs_pass_tl84",
+    "UV": "cs_pass_uv",
+    "FL / TFL": "cs_pass_fl_tfl",
+    "CWF": "cs_pass_cwf"
+};
+
+frappe.ui.form.on("Colour Spectrum Test Result", {
+    sample_1: calc_colour_spectrum_row,
+    sample_2: calc_colour_spectrum_row,
+    sample_3: calc_colour_spectrum_row,
+    sample_4: calc_colour_spectrum_row,
+    sample_5: calc_colour_spectrum_row,
+    sample_6: calc_colour_spectrum_row,
+    sample_7: calc_colour_spectrum_row,
+    sample_8: calc_colour_spectrum_row,
+    sample_9: calc_colour_spectrum_row,
+    sample_10: calc_colour_spectrum_row,
+    parameter: calc_colour_spectrum_row,
+    colour_spectrum_sections_remove: function(frm) {
+        recalc_colour_spectrum_summary(frm);
+    }
+});
+
+function calc_colour_spectrum_row(frm, cdt, cdn) {
+    const row = frappe.get_doc(cdt, cdn);
+    let passCount = 0;
+    COLOUR_SPECTRUM_SAMPLE_FIELDS.forEach((f) => {
+        if (String(row[f] || "").toLowerCase() === "pass") {
+            passCount += 1;
+        }
+    });
+    frappe.model.set_value(cdt, cdn, "pass_count", passCount);
+    recalc_colour_spectrum_summary(frm);
+}
+
+function recalc_colour_spectrum_summary(frm) {
+    const totals = {
+        "D-65": 0,
+        "TL-84": 0,
+        "UV": 0,
+        "FL / TFL": 0,
+        "CWF": 0
+    };
+    (frm.doc.colour_spectrum_sections || []).forEach((row) => {
+        const key = row.parameter;
+        if (!(key in totals)) {
+            return;
+        }
+        let passCount = 0;
+        COLOUR_SPECTRUM_SAMPLE_FIELDS.forEach((f) => {
+            if (String(row[f] || "").toLowerCase() === "pass") {
+                passCount += 1;
+            }
+        });
+        row.pass_count = passCount;
+        totals[key] = passCount;
+    });
+    Object.keys(COLOUR_SPECTRUM_PASS_FIELD_MAP).forEach((param) => {
+        safe_set_value(frm, COLOUR_SPECTRUM_PASS_FIELD_MAP[param], totals[param] || 0);
+    });
+}
+
+function ensure_colour_spectrum_rows(frm) {
+    if (!frm.fields_dict.colour_spectrum_sections) {
+        return;
+    }
+    const rows = frm.doc.colour_spectrum_sections || [];
+    const existing = new Set(rows.map((r) => r.parameter).filter(Boolean));
+    let added = false;
+    COLOUR_SPECTRUM_PARAMS.forEach((param) => {
+        if (existing.has(param)) {
+            return;
+        }
+        const row = frm.add_child("colour_spectrum_sections");
+        row.parameter = param;
+        row.pass_count = 0;
+        added = true;
+    });
+    if (added) {
+        frm.refresh_field("colour_spectrum_sections");
+    }
+}
+
+function is_colour_spectrum(frm) {
+    return String(frm.doc.testing_type || "").toLowerCase().includes("colour spectrum");
+}
+
+function hide_colour_spectrum_grid(frm) {
+    [
+        "colour_spectrum_sb",
+        "colour_spectrum_sections",
+        "colour_spectrum_summary_sb",
+        "cs_pass_d65",
+        "cs_pass_tl84",
+        "cs_pass_uv",
+        "cs_pass_fl_tfl",
+        "cs_pass_cwf"
+    ].forEach((fn) => {
+        if (!frm.fields_dict[fn]) {
+            return;
+        }
+        frm.toggle_display(fn, 0);
+        frm.set_df_property(fn, "hidden", 1);
+        if (frm.fields_dict[fn].$wrapper) {
+            frm.fields_dict[fn].$wrapper.hide();
+        }
+    });
+}
 
 function calc_tensile_row(frm, cdt, cdn) {
     const row = frappe.get_doc(cdt, cdn);
@@ -194,6 +331,10 @@ function recalc_tensile_total_samples(frm) {
 
 function is_tensile_testing(frm) {
     return String(frm.doc.testing_type || "").toLowerCase().includes("tensile");
+}
+
+function is_gsm_testing(frm) {
+    return !is_tensile_testing(frm) && !is_colour_spectrum(frm);
 }
 
 function selected_gsm(frm) {
@@ -279,7 +420,7 @@ function apply_gsm_sections(frm, values) {
 }
 
 function load_gsm_sections_for_batch(frm) {
-    if (is_tensile_testing(frm) || frm.__qc_sections_loading) {
+    if (is_tensile_testing(frm) || is_colour_spectrum(frm) || frm.__qc_sections_loading) {
         return;
     }
     if (!frm.doc.shaft_production_run || (!frm.doc.batch_no && !cint(frm.doc.roll_no))) {
@@ -307,7 +448,7 @@ function load_gsm_sections_for_batch(frm) {
 }
 
 function filter_existing_sections_to_batch(frm) {
-    if (is_tensile_testing(frm) || frm.__qc_sections_filtering) {
+    if (is_tensile_testing(frm) || is_colour_spectrum(frm) || frm.__qc_sections_filtering) {
         return;
     }
     if (!frm.doc.shaft_production_run || (!frm.doc.batch_no && !cint(frm.doc.roll_no))) {
@@ -359,6 +500,8 @@ function filter_existing_sections_to_batch(frm) {
 
 function toggle_testing_type_fields(frm) {
     const is_tensile = is_tensile_testing(frm);
+    const is_colour = is_colour_spectrum(frm);
+    const is_gsm = is_gsm_testing(frm);
     const is_patty = String(frm.doc.testing_type || "").toLowerCase().includes("patty");
 
     frm.toggle_display('test_method', is_tensile);
@@ -372,18 +515,40 @@ function toggle_testing_type_fields(frm) {
         frm.fields_dict.tensile_sections.$wrapper.toggle(!!is_tensile);
     }
 
-    frm.toggle_display('sections', !is_tensile);
-    frm.toggle_display('custom_gsm_grid_html', !is_tensile);
-    frm.toggle_display('custom_html_grid', !is_tensile);
-    frm.set_df_property('custom_gsm_grid_html', 'hidden', is_tensile ? 1 : 0);
-    frm.set_df_property('custom_html_grid', 'hidden', is_tensile ? 1 : 0);
-    frm.toggle_display('gsm_total_samples', !is_tensile);
-    frm.toggle_display('gsm_pass_samples', !is_tensile);
-    frm.toggle_display('gsm_fail_samples', !is_tensile);
-    frm.toggle_display('gsm_overall_result', !is_tensile);
-    frm.toggle_display('gsm_total_sections', !is_tensile);
-    frm.toggle_display('gsm_pass_sections', !is_tensile);
-    frm.toggle_display('gsm_fail_sections', !is_tensile);
+    // Colour Spectrum table + pass summaries
+    [
+        "colour_spectrum_sb",
+        "colour_spectrum_sections",
+        "colour_spectrum_summary_sb",
+        "cs_pass_d65",
+        "cs_pass_tl84",
+        "cs_pass_uv",
+        "cs_pass_fl_tfl",
+        "cs_pass_cwf"
+    ].forEach((fn) => {
+        if (!frm.fields_dict[fn]) {
+            return;
+        }
+        frm.toggle_display(fn, is_colour);
+        frm.set_df_property(fn, "hidden", is_colour ? 0 : 1);
+        if (frm.fields_dict[fn].$wrapper) {
+            frm.fields_dict[fn].$wrapper.toggle(!!is_colour);
+        }
+    });
+
+    frm.toggle_display('sections', is_gsm);
+    frm.toggle_display('custom_gsm_grid_html', is_gsm);
+    frm.toggle_display('custom_html_grid', is_gsm);
+    frm.set_df_property('custom_gsm_grid_html', 'hidden', is_gsm ? 0 : 1);
+    frm.set_df_property('custom_html_grid', 'hidden', is_gsm ? 0 : 1);
+    frm.toggle_display('gsm', is_gsm);
+    frm.toggle_display('gsm_total_samples', is_gsm);
+    frm.toggle_display('gsm_pass_samples', is_gsm);
+    frm.toggle_display('gsm_fail_samples', is_gsm);
+    frm.toggle_display('gsm_overall_result', is_gsm);
+    frm.toggle_display('gsm_total_sections', is_gsm);
+    frm.toggle_display('gsm_pass_sections', is_gsm);
+    frm.toggle_display('gsm_fail_sections', is_gsm);
 
     // Set read_only states
     const keep_editable = [
@@ -402,7 +567,8 @@ function toggle_testing_type_fields(frm) {
         'test_method',
         'cutting_template_width',
         'cutting_template_height',
-        'tensile_sections'
+        'tensile_sections',
+        'colour_spectrum_sections'
     ];
     frm.meta.fields.forEach(f => {
         if (!keep_editable.includes(f.fieldname)) {
@@ -414,6 +580,7 @@ function toggle_testing_type_fields(frm) {
     });
 
     if (is_tensile) {
+        hide_colour_spectrum_grid(frm);
         frm.set_df_property('test_method', 'read_only', 0);
         frm.set_df_property('cutting_template_width', 'read_only', 0);
         frm.set_df_property('cutting_template_height', 'read_only', 0);
@@ -427,8 +594,22 @@ function toggle_testing_type_fields(frm) {
                 frm.refresh_field(sectionsField);
             }
         }
+    } else if (is_colour) {
+        hide_tensile_grid(frm);
+        frm.set_df_property('colour_spectrum_sections', 'read_only', 0);
+        ensure_colour_spectrum_rows(frm);
+        recalc_colour_spectrum_summary(frm);
+        empty_gsm_grid(frm);
+        if (frm.is_new()) {
+            const sectionsField = get_sections_field(frm);
+            if (sectionsField && (frm.doc[sectionsField] || []).length) {
+                frm.clear_table(sectionsField);
+                frm.refresh_field(sectionsField);
+            }
+        }
     } else {
         hide_tensile_grid(frm);
+        hide_colour_spectrum_grid(frm);
         frm.set_df_property('sections', 'read_only', 0);
         frm.set_df_property('custom_gsm_grid_html', 'read_only', 0);
         frm.set_df_property('custom_html_grid', 'hidden', 0);
@@ -445,6 +626,8 @@ function set_auto_naming_series(frm) {
         prefix = "TT";
     } else if (frm.doc.testing_type === "Patty Cutting GSM Test") {
         prefix = "PGSM";
+    } else if (frm.doc.testing_type === "Colour Spectrum") {
+        prefix = "CS";
     }
 
     const unit_clean = frm.doc.unit.toLowerCase().replace(/\s+/g, '');
@@ -503,8 +686,8 @@ function add_load_gsm_button(frm) {
     }
 
     frm.add_custom_button(__("Load Quality Sections"), () => {
-        if (is_tensile_testing(frm)) {
-            frappe.msgprint(__("GSM sample tables are not used for Tensile Testing."));
+        if (is_tensile_testing(frm) || is_colour_spectrum(frm)) {
+            frappe.msgprint(__("GSM sample tables are not used for this testing type."));
             return;
         }
         if (!frm.doc.batch_no && !cint(frm.doc.roll_no)) {
@@ -625,7 +808,7 @@ function render_custom_html_grid(frm) {
     const wrapper = frm.fields_dict.custom_html_grid.$wrapper;
     wrapper.empty();
 
-    if (is_tensile_testing(frm)) {
+    if (is_tensile_testing(frm) || is_colour_spectrum(frm)) {
         empty_gsm_grid(frm);
         return;
     }

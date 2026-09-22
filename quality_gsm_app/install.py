@@ -21,7 +21,19 @@ def _run_quality_checking_setup():
 
     sync_qc_scripts()
     show_selected_gsm()
+<<<<<<< HEAD
     add_colour_spectrum()
+=======
+    from quality_gsm_app.patches.v2_22_add_colour_spectrum_testing_type import (
+        execute as add_colour_spectrum_type,
+    )
+    from quality_gsm_app.patches.v2_23_add_colour_spectrum_test import (
+        execute as add_colour_spectrum_test,
+    )
+
+    add_colour_spectrum_type()
+    add_colour_spectrum_test()
+>>>>>>> a6fa5e8 (Add Colour Spectrum quality check type with form UI and print support.)
     frappe.db.commit()
 
 
