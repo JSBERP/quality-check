@@ -17,9 +17,11 @@ def _run_quality_checking_setup():
     enforce_field_permanence.execute()
     from quality_gsm_app.patches.v2_20_filter_qc_sections_by_roll import execute as sync_qc_scripts
     from quality_gsm_app.patches.v2_21_show_only_selected_gsm_and_test import execute as show_selected_gsm
+    from quality_gsm_app.patches.v2_22_add_colour_spectrum_testing_type import execute as add_colour_spectrum
 
     sync_qc_scripts()
     show_selected_gsm()
+    add_colour_spectrum()
     frappe.db.commit()
 
 

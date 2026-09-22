@@ -189,6 +189,17 @@ def create_quality_checking_from_shaft(
 	if hasattr(qc, "testing_type"):
 		qc.testing_type = testing_type
 
+	if testing_type == "Colour Spectrum" and not qc.meta.has_field("colour_spectrum_sections"):
+		try:
+			from quality_gsm_app.patches.v2_23_add_colour_spectrum_test import execute
+
+			execute()
+			frappe.clear_cache(doctype="Quality Checking")
+			qc = frappe.new_doc("Quality Checking")
+			qc.testing_type = testing_type
+		except Exception as e:
+			frappe.log_error("Failed to run Colour Spectrum patch dynamically", str(e))
+
 	qc.shaft_production_run = shaft.name
 	qc.batch_no = (batch_no or "").strip() or None
 	qc.quality = getattr(shaft, "quality", None)
@@ -238,6 +249,12 @@ def create_quality_checking_from_shaft(
 			child.representative_gsm = gsm
 			child.quality = qc.quality
 
+	if testing_type == "Colour Spectrum" and qc.meta.has_field("colour_spectrum_sections"):
+		for param in ("D-65", "TL-84", "UV", "FL / TFL", "CWF"):
+			child = qc.append("colour_spectrum_sections", {})
+			child.parameter = param
+			child.pass_count = 0
+
 	unit_val_clean = str(qc.unit or "").lower().replace(" ", "")
 	valid_units = ["unit1", "unit2", "unit3", "unit4"]
 	if unit_val_clean not in valid_units:
@@ -249,6 +266,8 @@ def create_quality_checking_from_shaft(
 		prefix = "TT"
 	elif testing_type == "Patty Cutting GSM Test":
 		prefix = "PGSM"
+	elif testing_type == "Colour Spectrum":
+		prefix = "CS"
 	else:
 		prefix = "RGSM"
 	qc.naming_series = f"JSB/{prefix}-{u}/26-27/.###"

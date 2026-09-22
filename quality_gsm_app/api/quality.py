@@ -249,6 +249,8 @@ def create_quality_checking_from_shaft(
 		prefix = "TT"
 	elif testing_type == "Patty Cutting GSM Test":
 		prefix = "PGSM"
+	elif testing_type == "Colour Spectrum":
+		prefix = "CS"
 	else:
 		prefix = "RGSM"
 	qc.naming_series = f"JSB/{prefix}-{u}/26-27/.###"

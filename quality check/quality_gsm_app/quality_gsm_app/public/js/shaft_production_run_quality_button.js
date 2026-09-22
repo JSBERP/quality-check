@@ -132,6 +132,43 @@ frappe.ui.form.on("Shaft Production Run", {
             },
             __("Quality Check")
         );
+
+        frm.add_custom_button(
+            __("Colour Spectrum"),
+            () => {
+                frappe.call({
+                    method: "quality_gsm_app.api.quality.get_batches_from_shaft",
+                    args: { shaft_production_run: frm.doc.name },
+                    callback: (r) => {
+                        const batches = r.message || [];
+                        let prompt_field = {
+                            fieldtype: "Data",
+                            fieldname: "batch_no",
+                            label: __("Enter Batch No"),
+                            reqd: 1,
+                        };
+                        if (batches.length) {
+                            prompt_field = {
+                                fieldtype: "Select",
+                                fieldname: "batch_no",
+                                label: __("Select Batch No"),
+                                options: batches,
+                                reqd: 1,
+                                default: batches.length === 1 ? batches[0] : "",
+                            };
+                        }
+                        
+                        frappe.prompt(
+                            [prompt_field],
+                            (values) => { create_quality_checking(frm.doc.name, values.batch_no, "Colour Spectrum"); },
+                            batches.length ? __("Select Batch") : __("Start Testing"), 
+                            __("Start Testing")
+                        );
+                    }
+                });
+            },
+            __("Quality Check")
+        );
     }
 });
 
