@@ -290,7 +290,11 @@ function hide_colour_spectrum_grid(frm) {
         "cs_pass_tl84",
         "cs_pass_uv",
         "cs_pass_fl_tfl",
-        "cs_pass_cwf"
+        "cs_pass_cwf",
+        "cs_cb_1",
+        "cs_cb_2",
+        "cs_cb_3",
+        "cs_cb_4"
     ].forEach((fn) => {
         if (!frm.fields_dict[fn]) {
             return;
@@ -351,7 +355,7 @@ function selected_gsm(frm) {
 }
 
 function hide_tensile_grid(frm) {
-    ["tensile_sections", "tensile_total_samples", "test_method"].forEach((fn) => {
+    ["section_tensile", "tensile_sections", "tensile_total_samples", "test_method", "cb_tensile_1"].forEach((fn) => {
         if (!frm.fields_dict[fn]) {
             return;
         }
@@ -509,6 +513,8 @@ function toggle_testing_type_fields(frm) {
     frm.toggle_display('cutting_template_height', is_tensile || is_patty);
     frm.toggle_display('tensile_sections', is_tensile);
     frm.toggle_display('tensile_total_samples', is_tensile);
+    frm.toggle_display('section_tensile', is_tensile);
+    frm.toggle_display('cb_tensile_1', is_tensile);
     frm.set_df_property('tensile_sections', 'hidden', is_tensile ? 0 : 1);
     frm.set_df_property('tensile_total_samples', 'hidden', is_tensile ? 0 : 1);
     if (frm.fields_dict.tensile_sections && frm.fields_dict.tensile_sections.$wrapper) {
@@ -524,7 +530,11 @@ function toggle_testing_type_fields(frm) {
         "cs_pass_tl84",
         "cs_pass_uv",
         "cs_pass_fl_tfl",
-        "cs_pass_cwf"
+        "cs_pass_cwf",
+        "cs_cb_1",
+        "cs_cb_2",
+        "cs_cb_3",
+        "cs_cb_4"
     ].forEach((fn) => {
         if (!frm.fields_dict[fn]) {
             return;
@@ -536,6 +546,8 @@ function toggle_testing_type_fields(frm) {
         }
     });
 
+    frm.toggle_display('section_gsm', is_gsm);
+    frm.toggle_display('cb_gsm_summary', is_gsm);
     frm.toggle_display('sections', is_gsm);
     frm.toggle_display('custom_gsm_grid_html', is_gsm);
     frm.toggle_display('custom_html_grid', is_gsm);

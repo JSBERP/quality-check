@@ -29,6 +29,11 @@ def _run_quality_checking_setup():
 
     add_colour_spectrum_type()
     add_colour_spectrum_test()
+    from quality_gsm_app.patches.v2_24_fix_quality_checking_layout import (
+        execute as fix_quality_checking_layout,
+    )
+
+    fix_quality_checking_layout()
     frappe.db.commit()
 
 
