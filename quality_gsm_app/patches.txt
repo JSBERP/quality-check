@@ -1,18 +1,1 @@
-quality_gsm_app.patches.v1_0.create_gsm_quality_setup
-quality_gsm_app.patches.v1_1.ensure_quality_checking_schema
-quality_gsm_app.patches.v1_2.make_quality_checking_main_doctype
-quality_gsm_app.patches.v1_3.force_quality_checking_parent_fix
-quality_gsm_app.patches.v1_4.ensure_quality_checking_permissions
-quality_gsm_app.patches.v2_0.create_quality_checking_only
-quality_gsm_app.patches.v2_1.update_gsm_report_layout
-quality_gsm_app.patches.v2_2.update_gsm_report_layout_excel_style
-quality_gsm_app.patches.v2_3.enforce_field_permanence
-quality_gsm_app.patches.v2_4.fix_quality_fieldtype
-quality_gsm_app.patches.v2_5.add_custom_grid_and_expand_samples
-quality_gsm_app.patches.v2_20_filter_qc_sections_by_roll
-quality_gsm_app.patches.v2_21_show_only_selected_gsm_and_test
-quality_gsm_app.patches.v2_22_add_colour_spectrum_testing_type
-<<<<<<< HEAD
-=======
-quality_gsm_app.patches.v2_23_add_colour_spectrum_test
->>>>>>> a6fa5e8 (Add Colour Spectrum quality check type with form UI and print support.)
+quality_gsm_app.patches.v2_26_fix_gsm_table_layout.execute

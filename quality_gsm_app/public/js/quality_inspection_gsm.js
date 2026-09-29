@@ -829,19 +829,22 @@ function render_custom_html_grid(frm) {
 
     let html = `
         <style>
-            .gsm-excel-grid { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; font-family: Inter, sans-serif; table-layout: fixed; }
-            .gsm-excel-grid th, .gsm-excel-grid td { border: 1px solid #d1d8dd; padding: 6px 4px; text-align: center; overflow: hidden; }
+            .qc-test-stack { width: 100%; }
+            .gsm-excel-grid { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 13px; font-family: Inter, sans-serif; table-layout: auto; }
+            .gsm-excel-grid th, .gsm-excel-grid td { border: 1px solid #d1d8dd; padding: 8px 6px; text-align: center; white-space: nowrap; }
             .gsm-excel-grid th { background-color: #f3f3f3; font-weight: bold; }
-            .gsm-excel-grid input { width: 100%; border: none; text-align: center; font-size: 13px; background: transparent; outline: none; }
+            .gsm-excel-grid input { width: 72px; border: none; text-align: center; font-size: 13px; background: transparent; outline: none; }
             .gsm-excel-grid input:focus { background-color: #e2e8f0; }
-            .row-header { font-weight: bold; background-color: #f8f9fa; text-align: left !important; width: 100px; }
-            .section-wrapper { margin-bottom: 30px; overflow-x: auto; }
-            .set-gsm-col { font-weight: bold; width: 60px; }
-            .avg-col { font-weight: bold; background-color: #ecf0f1; width: 60px; }
+            .row-header { font-weight: bold; background-color: #f8f9fa; text-align: left !important; min-width: 130px; }
+            .section-wrapper { margin-bottom: 22px; overflow-x: auto; width: 100%; }
+            .sample-block-title { margin: 8px 0 4px; font-size: 13px; font-weight: 700; color: #334155; }
+            .set-gsm-col { font-weight: bold; min-width: 72px; }
+            .avg-col { font-weight: bold; background-color: #ecf0f1; min-width: 72px; }
             .pass-diff { background-color: #eafaf1; color: #1e8449; font-weight: bold; }
             .fail-diff { background-color: #fdedec; color: #c0392b; font-weight: bold; }
-            .s-idx-col { width: 45px; }
+            .s-idx-col { min-width: 76px; }
         </style>
+        <div class="qc-test-stack">
     `;
 
     rows.forEach((row, idx) => {
@@ -851,68 +854,56 @@ function render_custom_html_grid(frm) {
         html += `
         <div class="section-wrapper">
             <h5>Section ${idx + 1} - Set GSM: ${row.representative_gsm} | Result: <span id="res_${row.name}">${row.section_result || '-'}</span></h5>
-            <table class="gsm-excel-grid" data-row-name="${row.name}">
-                <thead>
-                    <tr>
-                        <th class="row-header">SI NO: ${idx + 1}</th>
-                        <th class="set-gsm-col">SET GSM</th>
         `;
-        for (let i = 1; i <= 25; i++) {
-            html += `<th class="s-idx-col">S${i}</th>`;
+        for (let start = 1; start <= 25; start += 5) {
+            const end = Math.min(start + 4, 25);
+            html += `<div class="sample-block-title">Samples S${start}–S${end}</div>`;
+            html += `<table class="gsm-excel-grid" data-row-name="${row.name}">
+                <thead><tr>
+                    <th class="row-header">SI NO: ${idx + 1}</th>
+                    <th class="set-gsm-col">SET GSM</th>`;
+            for (let i = start; i <= end; i++) {
+                html += `<th class="s-idx-col">S${i}</th>`;
+            }
+            html += `</tr></thead><tbody>`;
+            html += `<tr><td class="row-header">GSM (ROW 1)</td><td class="set-gsm-col">${row.representative_gsm}</td>`;
+            for (let i = start; i <= end; i++) {
+                html += `<td><input type="number" class="gsm-input" data-row="${row.name}" data-field="r1_s${i}" value="${row[`r1_s${i}`] || ''}" /></td>`;
+            }
+            html += `</tr>`;
+            html += `<tr><td class="row-header">GSM (ROW 2)</td><td class="set-gsm-col">${row.representative_gsm}</td>`;
+            for (let i = start; i <= end; i++) {
+                html += `<td><input type="number" class="gsm-input" data-row="${row.name}" data-field="r2_s${i}" value="${row[`r2_s${i}`] || ''}" /></td>`;
+            }
+            html += `</tr>`;
+            html += `<tr class="avg-col"><td class="row-header">COMBINED AVG</td><td class="set-gsm-col">-</td>`;
+            for (let i = start; i <= end; i++) {
+                html += `<td id="cmb_avg_${row.name}_${i}">${row[`s${i}_combined_avg`] || 0}</td>`;
+            }
+            html += `</tr>`;
+            html += `<tr><td class="row-header">DIFF</td><td class="set-gsm-col">-</td>`;
+            for (let i = start; i <= end; i++) {
+                const d = row[`s${i}_diff`];
+                const isPass = (d !== null && d !== undefined && Math.abs(d) < limit);
+                const cls = d !== undefined && d !== null ? (isPass ? 'pass-diff' : 'fail-diff') : '';
+                html += `<td id="diff_${row.name}_${i}" class="${cls}">${d !== undefined && d !== null ? d : ''}</td>`;
+            }
+            html += `</tr></tbody></table>`;
         }
-        html += `<th class="avg-col">AVERAGE</th></tr></thead><tbody>`;
-
-        // Row 1
-        html += `
-            <tr>
-                <td class="row-header">GSM (ROW 1)</td>
-                <td class="set-gsm-col">${row.representative_gsm}</td>
-        `;
-        for (let i = 1; i <= 25; i++) {
-            html += `<td><input type="number" class="gsm-input" data-row="${row.name}" data-field="r1_s${i}" value="${row[`r1_s${i}`] || ''}" /></td>`;
-        }
-        html += `<td class="avg-col" id="r1_avg_${row.name}">${row.r1_average || 0}</td></tr>`;
-
-        // Row 2
-        html += `
-            <tr>
-                <td class="row-header">GSM (ROW 2)</td>
-                <td class="set-gsm-col">${row.representative_gsm}</td>
-        `;
-        for (let i = 1; i <= 25; i++) {
-            html += `<td><input type="number" class="gsm-input" data-row="${row.name}" data-field="r2_s${i}" value="${row[`r2_s${i}`] || ''}" /></td>`;
-        }
-        html += `<td class="avg-col" id="r2_avg_${row.name}">${row.r2_average || 0}</td></tr>`;
-
-        // Combined Avg
-        html += `
-            <tr class="avg-col">
-                <td class="row-header">COMBINED AVG</td>
-                <td class="set-gsm-col">-</td>
-        `;
-        for (let i = 1; i <= 25; i++) {
-            html += `<td id="cmb_avg_${row.name}_${i}">${row[`s${i}_combined_avg`] || 0}</td>`;
-        }
-        html += `<td id="grand_avg_${row.name}">${row.grand_average_gsm || 0}</td></tr>`;
-
-        // Diff
-        html += `
-            <tr>
-                <td class="row-header">DIFF</td>
-                <td class="set-gsm-col">-</td>
-        `;
-        for (let i = 1; i <= 25; i++) {
-            const d = row[`s${i}_diff`];
-            const isPass = (d !== null && d !== undefined && Math.abs(d) < limit);
-            const cls = d !== undefined && d !== null ? (isPass ? 'pass-diff' : 'fail-diff') : '';
-            html += `<td id="diff_${row.name}_${i}" class="${cls}">${d !== undefined && d !== null ? d : ''}</td>`;
-        }
-        html += `<td id="sec_res_${row.name}">${row.section_result || ''}</td></tr>`;
-
-        html += `</tbody></table></div>`;
+        html += `<div class="sample-block-title">Section average: <span id="r1_avg_${row.name}">${row.r1_average || 0}</span> / <span id="r2_avg_${row.name}">${row.r2_average || 0}</span> · Grand <span id="grand_avg_${row.name}">${row.grand_average_gsm || 0}</span> · <span id="sec_res_${row.name}">${row.section_result || ''}</span></div>`;
+        html += `</div>`;
     });
+    html += `</div>`;
 
     wrapper.html(html);
+    const control = wrapper.closest(".frappe-control");
+    if (control && control.length) {
+        control.css({ width: "100%", maxWidth: "100%", flex: "1 1 100%" });
+    }
+    const column = wrapper.closest(".form-column");
+    if (column && column.length) {
+        column.css({ width: "100%", maxWidth: "100%", flex: "1 1 100%" });
+    }
 
     // Bind events
     wrapper.find('.gsm-input').on('change', function() {
