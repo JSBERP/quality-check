@@ -1,1 +1,2 @@
-quality_gsm_app.patches.v2_26_fix_gsm_table_layout.execute
+quality_gsm_app.patches.v2_26_fix_gsm_table_layout
+quality_gsm_app.patches.v2_27_fix_quality_checking_layout
