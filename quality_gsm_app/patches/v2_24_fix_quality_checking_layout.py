@@ -25,6 +25,7 @@ LAYOUT_FIELDS = [
 	{"fieldname": "section_gsm", "label": "GSM Testing", "fieldtype": "Section Break"},
 	{"fieldname": "section_gsm_summary", "label": "GSM Summary", "fieldtype": "Section Break"},
 	{"fieldname": "cb_gsm_summary", "label": "", "fieldtype": "Column Break"},
+	{"fieldname": "section_template_details", "label": "Template Details", "fieldtype": "Section Break"},
 ]
 
 # Canonical field order. Missing fields are skipped; unknown fields keep relative order at the end.
@@ -63,12 +64,14 @@ DESIRED_ORDER = [
 	"fabric_type",
 	"quality",
 	"color",
-	# Tensile
-	"section_tensile",
+	# Template Details
+	"section_template_details",
 	"test_method",
 	"cutting_template_width",
 	"cb_tensile_1",
 	"cutting_template_height",
+	# Tensile Table
+	"section_tensile",
 	"tensile_total_samples",
 	"tensile_sections",
 	# GSM grid (full width)
@@ -83,9 +86,6 @@ DESIRED_ORDER = [
 	"cb_gsm_summary",
 	"gsm_pass_samples",
 	"gsm_fail_samples",
-	"gsm_total_sections",
-	"gsm_pass_sections",
-	"gsm_fail_sections",
 ]
 
 COLOUR_DEPENDS = "eval:doc.testing_type=='Colour Spectrum'"
@@ -125,6 +125,7 @@ FIELD_DEPENDS = {
 	"gsm_overall_result": GSM_DEPENDS,
 	"cb_gsm_summary": GSM_DEPENDS,
 	"gsm": GSM_DEPENDS,
+	"section_template_details": CUTTING_DEPENDS,
 }
 
 
@@ -182,6 +183,12 @@ def _reorder_and_configure():
 	if by_name.get("section_details"):
 		by_name["section_details"].label = ""
 		by_name["section_details"].collapsible = 0
+	if by_name.get("section_template_details"):
+		by_name["section_template_details"].label = "Template Details"
+
+	for old_field in ["gsm_total_sections", "gsm_pass_sections", "gsm_fail_sections"]:
+		if by_name.get(old_field):
+			by_name[old_field].hidden = 1
 
 	# Column breaks must not carry labels (avoids phantom headings)
 	for cb_name in (

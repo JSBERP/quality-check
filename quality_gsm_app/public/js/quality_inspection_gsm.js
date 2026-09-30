@@ -507,6 +507,8 @@ function toggle_testing_type_fields(frm) {
     frm.toggle_display('test_method', is_tensile);
     frm.toggle_display('cutting_template_width', is_tensile || is_patty);
     frm.toggle_display('cutting_template_height', is_tensile || is_patty);
+    frm.toggle_display('section_template_details', is_tensile || is_patty);
+    frm.toggle_display('section_tensile', is_tensile);
     frm.toggle_display('tensile_sections', is_tensile);
     frm.toggle_display('tensile_total_samples', is_tensile);
     frm.set_df_property('tensile_sections', 'hidden', is_tensile ? 0 : 1);
@@ -546,9 +548,6 @@ function toggle_testing_type_fields(frm) {
     frm.toggle_display('gsm_pass_samples', is_gsm);
     frm.toggle_display('gsm_fail_samples', is_gsm);
     frm.toggle_display('gsm_overall_result', is_gsm);
-    frm.toggle_display('gsm_total_sections', is_gsm);
-    frm.toggle_display('gsm_pass_sections', is_gsm);
-    frm.toggle_display('gsm_fail_sections', is_gsm);
 
     // Set read_only states
     const keep_editable = [
